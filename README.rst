@@ -99,3 +99,19 @@ References:
 .. |docs| image:: https://readthedocs.org/projects/fsfc/badge/?version=latest
     :target: http://fsfc.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+    
+<!--测试LFSBSS代码
+```python
+from fsfc.generic import LFSBSS
+import numpy as np
+import random
+data = np.loadtxt("datasets\DIM-sets (low)\dim15.txt")
+data = data[1:,:]
+from sklearn.preprocessing import StandardScaler 
+ss = StandardScaler()
+x_norm = ss.fit_transform(data)
+random.shuffle(x_norm)
+x = x_norm[:1000,:]
+l = LFSBSS(5)
+l.fit(x)
+```-->
