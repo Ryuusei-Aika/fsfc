@@ -69,12 +69,16 @@ class LFSBSS(BaseEstimator, ClusterMixin):
         k_means = KMeans(n_clusters=self.clusters)
         features = [set(range(n_features)) for _ in range(self.clusters)]
         clusters, means = self._find_clusters_and_means(k_means, x)
+        feature_means = means.tolist()  # 创建list以存储包含不同特征维度的各个聚类中心
+        # TODO: 可能需要把聚类中心都写成{特征编号：值}字典形式以方便后续辨认删除了哪个特征
 
         for it in range(self.max_iterations):
+            print("iteration %d" % (it + 1))
             was_changed = False
             for i in range(self.clusters):
                 cluster = clusters[i]
-                mean = means[i]
+                # mean = means[i]
+                mean = np.array(feature_means[i])
                 this_features = features[i]
                 if len(this_features) == 1:
                     # Can't drop anything
@@ -102,12 +106,14 @@ class LFSBSS(BaseEstimator, ClusterMixin):
                 most_similar = None
                 new_mean = None
                 for j in range(self.clusters):
-                    new_cluster = clusters[j]
+                    # new_cluster = clusters[j]
+                    new_cluster = new_clusters[j]
                     score = LFSBSS._jaccard_score(new_cluster, cluster)
                     if max_score is None or score > max_score:
                         max_score = score
                         most_similar = new_cluster
-                        new_mean = new_means[i]
+                        # new_mean = new_means[i]
+                        new_mean = new_means[j]
                 if most_similar is None or new_mean is None:
                     # Nothing to select
                     continue
@@ -124,12 +130,15 @@ class LFSBSS(BaseEstimator, ClusterMixin):
                     features[i] = set(new_features)
                     clusters[i] = most_similar
                     # means[i] = new_mean
+                    feature_means[i] = new_mean.tolist()
             if not was_changed:
                 break
 
         self.features_ = features
-        self.means_ = means
-        self.vars_ = [None] * x.shape[0]
+        # self.means_ = means
+        # self.vars_ = [None] * x.shape[0]
+        self.means_ = np.array(feature_means)
+        self.vars_ = [None] * self.clusters
 
         # Compute variances for clusters
         for (idx, cluster) in enumerate(clusters):
@@ -142,12 +151,14 @@ class LFSBSS(BaseEstimator, ClusterMixin):
                 self.labels_[sample] = idx
         for i in range(x.shape[0]):
             if self.labels_[i] is None:
-                self.labels_[i] = self.predict(x[i])
+                # self.labels_[i] = self.predict(x[i])
+                print("predicting {}th sample".format(i))
+                self.labels_[i] = self.predict(x[i].reshape(1, -1))
         return self
 
     def predict(self, x):
         """
-        Predict clusters for one sample
+        Predict clusters for **one sample**
 
         Parameters
         ----------
@@ -165,8 +176,11 @@ class LFSBSS(BaseEstimator, ClusterMixin):
         min_score = None
         closest = None
         for i in range(self.clusters):
-            projection = x[:, self.features_[i]]
-            norm = euclidean_distances(projection, self.means_[i])
+            # projection = x[:, self.features_[i]]
+            print("  - predicting if its in {}th cluster".format(i))
+            projection = x[:, list(self.features_[i])]
+            # norm = euclidean_distances(projection, self.means_[i])
+            norm = euclidean_distances(projection, self.means_[i].reshape(1, -1))
             score = norm / self.vars_[i]
             if min_score is None or score < min_score:
                 min_score = score
